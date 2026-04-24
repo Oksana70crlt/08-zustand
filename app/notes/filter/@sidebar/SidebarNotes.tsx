@@ -1,7 +1,5 @@
 import Link from 'next/link';
 import css from './SidebarNotes.module.css';
-import type { NoteTag } from '@/types/note';
-
 
 //тип пропсів для бокової панелі нотаток
 interface SidebarNotesProps {

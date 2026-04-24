@@ -9,3 +9,10 @@ export interface Note {
   createdAt: string;
   updatedAt: string;
 }
+
+//опис спільний тип для draftу нотатки, який містить заголовок, вміст та тег. Цей тип використовується для створення нової нотатки або редагування існуючої, де ідентифікатор та дати ще не визначені.
+export interface NoteDraft {
+  title: string;
+  content: string;
+  tag: NoteTag;
+}

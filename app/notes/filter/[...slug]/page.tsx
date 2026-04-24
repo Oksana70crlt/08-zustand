@@ -7,6 +7,40 @@ import { notFound } from 'next/navigation';
 import type { NoteTag } from '@/types/note';
 import { fetchNotes } from '@/lib/api';
 import NotesClient from './Notes.client';
+import type { Metadata } from 'next';
+import { OG_IMAGE, SITE_NAME } from '@/lib/metadata';
+
+// метадані для сторінки фільтрації нотаток за тегом
+interface MetadataProps {
+  params: Promise<{ slug: string[] }>;
+}
+
+export async function generateMetadata({
+  params,
+}: MetadataProps): Promise<Metadata> {
+  const { slug } = await params;
+
+  const rawTag = decodeURIComponent(slug[0]);
+  const tag = rawTag === 'all' ? 'All notes' : rawTag;
+
+  return {
+    title: `Notes: ${tag} | ${SITE_NAME}`,
+    description: `Browse ${tag} notes in the ${SITE_NAME} application.`,
+    openGraph: {
+      title: `Notes: ${tag} | ${SITE_NAME}`,
+      description: `Browse ${tag} notes in the ${SITE_NAME} application.`,
+      url: `/notes/filter/${rawTag}`,
+      images: [
+        {
+          url: OG_IMAGE,
+          width: 1200,
+          height: 630,
+          alt: `${SITE_NAME} notes page`,
+        },
+      ],
+    },
+  };
+}
 
 const PER_PAGE = 12;
 

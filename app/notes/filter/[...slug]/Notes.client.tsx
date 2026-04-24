@@ -8,9 +8,8 @@ import type { NoteTag } from '@/types/note';
 import { fetchNotes } from '@/lib/api';
 import NoteList from '@/components/NoteList/NoteList';
 import Pagination from '@/components/Pagination/Pagination';
-import Modal from '@/components/Modal/Modal';
-import NoteForm from '@/components/NoteForm/NoteForm';
 import SearchBox from '@/components/SearchBox/SearchBox';
+import Link from 'next/link';
 import css from '../../NotesPage.module.css';
 
 const PER_PAGE = 12;
@@ -19,13 +18,10 @@ interface FilterNotesClientProps {
   tag?: NoteTag;
 }
 
-export default function FilterNotesClient({
-  tag,
-}: FilterNotesClientProps) {
+export default function FilterNotesClient({ tag }: FilterNotesClientProps) {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [inputValue, setInputValue] = useState<string>('');
   const [searchValue, setSearchValue] = useState<string>('');
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['notes', currentPage, searchValue, tag],
@@ -46,14 +42,6 @@ export default function FilterNotesClient({
     setSearchValue(value.trim());
     setCurrentPage(1);
   }, 500);
-
-  const handleOpenModal = (): void => {
-    setIsModalOpen(true);
-  };
-
-  const handleCloseModal = (): void => {
-    setIsModalOpen(false);
-  };
 
   const handlePageChange = (selectedPage: number): void => {
     setCurrentPage(selectedPage);
@@ -78,13 +66,9 @@ export default function FilterNotesClient({
             />
           )}
 
-          <button
-            type="button"
-            className={css.button}
-            onClick={handleOpenModal}
-          >
+          <Link href="/notes/action/create" className={css.button}>
             Create note +
-          </button>
+          </Link>
         </header>
 
         {isLoading && <p>Loading, please wait...</p>}
@@ -94,15 +78,7 @@ export default function FilterNotesClient({
           <NoteList notes={notes} />
         )}
 
-        {!isLoading && !isError && notes.length === 0 && (
-          <p>No notes found.</p>
-        )}
-
-        {isModalOpen && (
-          <Modal onClose={handleCloseModal}>
-            <NoteForm onCancel={handleCloseModal} />
-          </Modal>
-        )}
+        {!isLoading && !isError && notes.length === 0 && <p>No notes found.</p>}
       </main>
 
       <Toaster position="top-right" />

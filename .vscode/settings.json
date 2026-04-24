@@ -3,6 +3,14 @@
     {
       "folderPath": "08-zustand\\lib\\api\\",
       "color": "foldercolorizer.color_00d7ff"
+    },
+    {
+      "folderPath": "08-zustand\\app\\notes\\filter\\",
+      "color": "foldercolorizer.color_afaf00"
+    },
+    {
+      "folderPath": "08-zustand\\app\\notes\\[id]\\",
+      "color": "foldercolorizer.color_8787ff"
     }
   ]
 }

@@ -1,126 +1,138 @@
 'use client';
 
-import { ErrorMessage, Field, Form, Formik } from 'formik';
+import { useRouter } from 'next/navigation';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import * as Yup from 'yup';
 import css from './NoteForm.module.css';
-import { createNote } from '../../lib/api/createNote';
-import type { NoteTag } from '../../types/note';
-import type { CreateNotePayload } from '../../lib/api/createNote';
-
-// Пропси для компонента NoteForm
-interface NoteFormProps {
-  // Функція, яка буде викликана при скасуванні створення нотатки (наприклад, при закритті модалки)
-  onCancel: () => void;
-}
-//початковий стан форми та схема валідації з використанням Yup
-const initialValues: CreateNotePayload = {
-  title: '',
-  content: '',
-  tag: 'Todo',
-};
-
-// Схема валідації для форми створення нотатки
-const validationSchema = Yup.object({
-  title: Yup.string()
-    .min(3, 'Title must be at least 3 characters')
-    .max(50, 'Title must be at most 50 characters')
-    .required('Title is required'),
-  content: Yup.string().max(500, 'Content must be at most 500 characters'),
-  tag: Yup.mixed<NoteTag>()
-    .oneOf(
-      ['Todo', 'Work', 'Personal', 'Meeting', 'Shopping'],
-      'Invalid tag value'
-    )
-    .required('Tag is required'),
-});
+import { initialDraft, useNoteStore } from '@/lib/store/noteStore';
+import { createNote } from '@/lib/api';
+import type { NoteTag, NoteDraft } from '@/types/note';
 
 // Компонент форми для створення нотатки
 //==============================================================================
-function NoteForm({ onCancel }: NoteFormProps) {
-  // Використовуємо useQueryClient для отримання доступу до клієнта React Query
+function NoteForm() {
+  //повертає користувача на попередню сторінку після успішного створення нотатки або при скасуванні дії.
+  const router = useRouter();
+  // використовуємо useQueryClient для отримання доступу до клієнта React Query
   const queryClient = useQueryClient();
 
-  const createNoteMutation = useMutation({
+  // беремо поточну draft з Zustand store.
+  const draft = useNoteStore(state => state.draft);
+  const setDraft = useNoteStore(state => state.setDraft); // функція для оновлення draft у Zustand store.
+  const clearDraft = useNoteStore(state => state.clearDraft); // функція для очищення draft у Zustand store, яка встановлює його назад до початкового стану.
+
+  // mutation відповідає за створення нотатки на сервері.
+  const mutation = useMutation({
     mutationFn: createNote,
-    onSuccess: async () => {
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
+      clearDraft();
       toast.success('Note created successfully');
-      onCancel();
-      await queryClient.invalidateQueries({ queryKey: ['notes'] });
+      router.back(); // повертає користувача на попередню сторінку після успішного створення нотатки
     },
     onError: () => {
       toast.error('Failed to create note');
     },
   });
 
-  // Функція, яка буде викликана при сабміті форми з валідними даними
-  const handleSubmit = (values: CreateNotePayload): void => {
-    createNoteMutation.mutate(values);
+  // handleChange викликається кожного разу,
+  // коли користувач змінює input, textarea або select.
+  const handleChange = (
+    event: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => {
+    const { name, value } = event.target;
+
+    setDraft({
+      ...draft,
+      [name]: value,
+    } as NoteDraft);
+  };
+
+  // handleSubmit спрацьовує при відправці форми.
+  const handleSubmit = (formData: FormData) => {
+    const title = formData.get('title');
+    const content = formData.get('content');
+    const tag = formData.get('tag');
+
+    if (
+      typeof title !== 'string' ||
+      typeof content !== 'string' ||
+      typeof tag !== 'string'
+    ) {
+      toast.error('Invalid form data');
+      return;
+    }
+
+    // відправляємо дані на сервер.
+    mutation.mutate({
+      title: title.trim(),
+      content: content.trim(),
+      tag: tag as NoteTag,
+    });
+  };
+
+  const handleCancel = () => {
+    router.back();
   };
 
   return (
-    <Formik
-      initialValues={initialValues}
-      validationSchema={validationSchema}
-      onSubmit={handleSubmit}
-    >
-      {({ isValid, dirty }) => (
-        <Form className={css.form}>
-          <div className={css.formGroup}>
-            <label htmlFor="title">Title</label>
-            <Field id="title" type="text" name="title" className={css.input} />
-            <ErrorMessage name="title" component="span" className={css.error} />
-          </div>
+    <form className={css.form} action={handleSubmit}>
+      <label className={css.field}>
+        Title
+        <input
+          className={css.input}
+          type="text"
+          name="title"
+          defaultValue={draft.title || initialDraft.title}
+          onChange={handleChange}
+          required
+        />
+      </label>
 
-          <div className={css.formGroup}>
-            <label htmlFor="content">Content</label>
-            <Field
-              as="textarea"
-              id="content"
-              name="content"
-              rows={8}
-              className={css.textarea}
-            />
-            <ErrorMessage
-              name="content"
-              component="span"
-              className={css.error}
-            />
-          </div>
+      <label className={css.field}>
+        Content
+        <textarea
+          className={css.textarea}
+          name="content"
+          defaultValue={draft.content || initialDraft.content}
+          onChange={handleChange}
+          required
+        />
+      </label>
 
-          <div className={css.formGroup}>
-            <label htmlFor="tag">Tag</label>
-            <Field as="select" id="tag" name="tag" className={css.select}>
-              <option value="Todo">Todo</option>
-              <option value="Work">Work</option>
-              <option value="Personal">Personal</option>
-              <option value="Meeting">Meeting</option>
-              <option value="Shopping">Shopping</option>
-            </Field>
-            <ErrorMessage name="tag" component="span" className={css.error} />
-          </div>
+      <label className={css.field}>
+        Tag
+        <select
+          className={css.select}
+          name="tag"
+          defaultValue={draft.tag || initialDraft.tag}
+          onChange={handleChange}
+          required
+        >
+          <option value="Todo">Todo</option>
+          <option value="Work">Work</option>
+          <option value="Personal">Personal</option>
+          <option value="Meeting">Meeting</option>
+          <option value="Shopping">Shopping</option>
+        </select>
+      </label>
 
-          <div className={css.actions}>
-            <button
-              type="button"
-              className={css.cancelButton}
-              onClick={onCancel}
-            >
-              Cancel
-            </button>
+      <div className={css.actions}>
+        <button
+          className={css.submitBtn}
+          type="submit"
+          disabled={mutation.isPending}
+        >
+          Create
+        </button>
 
-            <button
-              type="submit"
-              className={css.submitButton}
-              disabled={!dirty || !isValid || createNoteMutation.isPending}
-            >
-              {createNoteMutation.isPending ? 'Creating...' : 'Create note'}
-            </button>
-          </div>
-        </Form>
-      )}
-    </Formik>
+        <button className={css.cancelBtn} type="button" onClick={handleCancel}>
+          Cancel
+        </button>
+      </div>
+    </form>
   );
 }
 
